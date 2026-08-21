@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>设置</title>
+  <!-- COMMENT: Reuse side panel styles for a consistent extension look -->
+  <link rel="stylesheet" href="sidepanel/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body class="settings-page">
+  <div class="settings-page-shell">
+  <div class="settings-page-scroll">
+  <header class="subpage-header">
+    <a href="sidepanel/index.html" class="subpage-back" aria-label="返回侧栏" title="返回">
+      <svg class="footer-md-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </a>
+    <h2 class="subpage-title">设置</h2>
+  </header>
+
+  <section class="settings-section settings-section-first">
+    <h3 class="settings-heading">键盘快捷键</h3>
+    <p class="pm-subtitle">自定义在 AI 助手网页中打开提示词面板的方式。</p>
+    <div class="settings-shortcut-row">
+      <label class="settings-field-label" for="open-shortcut-record">打开/关闭面板</label>
+      <div class="settings-shortcut-controls">
+        <button type="button" class="main settings-shortcut-record" id="open-shortcut-record">录制快捷键</button>
+        <span id="open-shortcut-display" class="settings-shortcut-display" aria-live="polite">⌘ + ⇧ + P</span>
+      </div>
+      <p class="pm-subtitle settings-shortcut-hint">点击录制，然后按下你想使用的组合键。</p>
+    </div>
+    <div id="navigation-shortcuts" class="shortcut-container">
+      <p style="display: flex; align-items: center; margin: 8px 0;">
+        <span class="settings-kbd">悬停/点击</span>
+        <span>打开提示词列表</span>
+      </p>
+      <p style="display: flex; align-items: center; margin: 8px 0;">
+        <span class="settings-kbd">↑↓</span>
+        <span>浏览提示词列表</span>
+      </p>
+      <p style="display: flex; align-items: center; margin: 8px 0;">
+        <span class="settings-kbd">Enter</span>
+        <span>选择提示词</span>
+      </p>
+      <p style="display: flex; align-items: center; margin: 8px 0;">
+        <span class="settings-kbd">Esc</span>
+        <span>关闭提示词管理器</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h3 class="settings-heading">打开方式</h3>
+    <p class="pm-subtitle">选择在 AI 助手页面中打开提示词的方式。“侧栏或快捷键”只使用 Chrome 侧栏或键盘快捷键。</p>
+    <div id="display-mode-section" class="settings-mode-options" role="radiogroup" aria-label="打开方式">
+      <label class="settings-mode-option">
+        <input type="radio" name="displayMode" value="standard">
+        <span>悬浮按钮</span>
+      </label>
+      <label class="settings-mode-option">
+        <input type="radio" name="displayMode" value="hotCorner">
+        <span>热区</span>
+      </label>
+      <label class="settings-mode-option">
+        <input type="radio" name="displayMode" value="invisible">
+        <span>侧栏或快捷键</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h3 class="settings-heading">偏好设置</h3>
+    <p class="pm-subtitle">设置插件在 AI 助手页面和侧栏中的行为。</p>
+    <div class="settings-toggle-list">
+      <label class="settings-toggle-row">
+        <span>将提示词追加到现有文本</span>
+        <input type="checkbox" id="toggle-append-mode" class="settings-toggle-input">
+        <span class="settings-toggle-switch" aria-hidden="true"></span>
+      </label>
+      <label class="settings-toggle-row">
+        <span>启用标签</span>
+        <input type="checkbox" id="toggle-enable-tags" class="settings-toggle-input">
+        <span class="settings-toggle-switch" aria-hidden="true"></span>
+      </label>
+      <label class="settings-toggle-row">
+        <span>强制深色模式</span>
+        <input type="checkbox" id="toggle-force-dark" class="settings-toggle-input">
+        <span class="settings-toggle-switch" aria-hidden="true"></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="settings-section" id="tag-management-section" hidden>
+    <h3 class="settings-heading">标签管理</h3>
+    <p class="pm-subtitle">拖动调整标签顺序，也可以从所有提示词中移除标签。</p>
+    <div id="tag-management-list" class="settings-tag-mgmt-list" aria-live="polite"></div>
+    <p id="tag-management-empty" class="pm-subtitle" hidden>还没有标签，可在新建或编辑提示词时添加。</p>
+  </section>
+
+  <section class="settings-section">
+    <h3 class="settings-heading">提示词管理</h3>
+    <div class="pm-row">
+      <button class="main" id="export-btn" type="button">导出</button>
+      <button class="main" id="import-btn" type="button">导入</button>
+    </div>
+    <input type="file" id="import-file" accept=".json" hidden />
+    <p id="import-export-status" class="pm-subtitle settings-status" aria-live="polite"></p>
+    <button class="main settings-danger-btn" id="delete-all-prompts" type="button">删除全部提示词</button>
+  </section>
+
+  <section class="settings-section">
+    <h3 class="settings-heading">网站权限</h3>
+    <p class="pm-subtitle">插件可以注入提示词的网站。</p>
+    <p id="permissions-empty" class="pm-subtitle settings-permissions-empty">还没有授予网站访问权限。</p>
+    <ul id="permissions-list" class="settings-permissions-list" aria-live="polite"></ul>
+  </section>
+  </div>
+  </div>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

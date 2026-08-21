@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>提示词管理器</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body>
+  <div class="title">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="../icons/icon-main-s.png">
+        <img class="header-icon" src="../icons/icon-main-s color.png" alt="插件图标" style="width: 22px; height: 22px" />
+      </picture>
+    <h2>提示词管理器</h2>
+    <div class="title-actions">
+      <a id="open-new-tab-link" href="index.html?expanded=1" target="_blank" rel="noopener" title="在新标签页打开">
+        <img id="open-new-tab" class="header-icon" src="../icons/open_in_new.svg" alt="在新标签页打开" />
+      </a>
+      <!-- COMMENT: Close control only shown in the expanded tab view -->
+      <button type="button" id="close-expanded-view" class="header-close-btn" aria-label="关闭" title="关闭">&times;</button>
+    </div>
+  </div>
+  <div class="main-layout">
+  <!-- COMMENT: Sidebar first in DOM for grid layout; reordered in narrow view via CSS -->
+  <aside class="sidebar-panel">
+    <!-- COMMENT: Top slot — action buttons OR inline prompt form (same footprint) -->
+    <div class="sidebar-top-slot">
+      <div class="sidebar-action-bar" id="sidebar-action-bar">
+        <button type="button" id="create-prompt-btn" class="sidebar-action-btn sidebar-action-btn-primary">
+          <img src="../icons/add-icon.png" alt="" aria-hidden="true" class="sidebar-action-btn-icon" />
+          <span>新建提示词</span>
+        </button>
+      </div>
+      <div class="sidebar-composer" id="sidebar-composer" hidden>
+        <form id="prompt-form">
+          <input type="hidden" id="prompt-uuid" />
+          <input type="text" id="prompt-title" class="opm-input-field" placeholder="提示词标题" required />
+          <textarea id="prompt-content" class="opm-textarea-field" placeholder="在这里输入提示词，可使用 #变量名# 插入动态内容。" required></textarea>
+          <div id="prompt-tags-host" class="prompt-tags-host" hidden></div>
+          <div class="form-actions">
+            <button class="main" type="submit" id="submit-button">
+              <img src="../icons/add-icon.png" alt="添加" style="margin-right: 5px" />
+              保存提示词
+            </button>
+            <button type="button" id="cancel-edit-button">返回</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="prompts-container">
+      <div class="prompts-section">
+        <!-- COMMENT: Variable fill-in view — same structure as the in-page variable form -->
+        <div
+          class="opm-form-container opm-variable-input-form sidebar-variable-input"
+          id="sidebar-variable-input"
+          hidden
+        >
+          <div id="spm-variable-fields" class="opm-variable-fields"></div>
+          <div class="opm-variable-actions">
+            <button type="button" class="opm-button" id="spm-variable-submit">插入</button>
+            <button type="button" class="opm-button" id="spm-variable-back">返回</button>
+          </div>
+        </div>
+        <div id="permissions-shortcut" class="shortcut-container" style="display: none"></div>
+        <!-- COMMENT: Search + tag filters mirror the in-page prompt list controls -->
+        <div id="prompt-list-controls" class="prompt-list-controls" hidden>
+          <div id="prompt-tags-filter" class="prompt-tags-filter" hidden></div>
+          <input type="search" id="prompt-search-input" class="prompt-search-input" placeholder="搜索提示词" autocomplete="off" />
+        </div>
+        <ul id="prompt-list">
+
+        </ul>
+        <!-- Add title and message about storage changes -->
+        <div id="empty-state" class="shortcut-container" style="display: none">
+          <h3>键盘导航与快捷键</h3>
+      <p>这些快捷操作可用于插件支持的任意页面。</p>
+          <p style="display: flex; align-items: center; margin: 8px 0"> <span style="
+                  background-color: var(--primary);
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  margin-right: 10px;
+                ">
+              悬停/点击</span> <span>打开提示词列表</span> </p>
+          <p style="display: flex; align-items: center; margin: 8px 0"> <span style="
+                  background-color: var(--primary);
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  margin-right: 10px;
+                ">
+              自定义快捷键</span> <span>打开/关闭提示词列表（可在设置中修改）</span> </p>
+          <p style="display: flex; align-items: center; margin: 8px 0"> <span style="
+                  background-color: var(--primary);
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  margin-right: 10px;
+                ">↑↓</span> <span>浏览提示词列表</span> </p>
+          <p style="display: flex; align-items: center; margin: 8px 0"> <span style="
+                  background-color: var(--primary);
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  margin-right: 10px;
+                ">Enter</span> <span>选择提示词</span> </p>
+          <p style="display: flex; align-items: center; margin: 8px 0"> <span style="
+                  background-color: var(--primary);
+                  color: white;
+                  padding: 4px 8px;
+                  border-radius: 4px;
+                  margin-right: 10px;
+                ">Esc</span> <span>关闭提示词管理器</span> </p>
+        </div>
+      </div>
+    </div>
+    <!-- Personal library mode intentionally omits AI assistant and community controls. -->
+    <!-- COMMENT: Footer icons injected by sidepanelFooter.js -->
+  </aside>
+  <!-- COMMENT: Right-hand composer pane — used in expanded tab (?expanded=1); form moves here via JS -->
+  <div class="composer-panel" id="composer-panel" hidden></div>
+  </div>
+  <script type="module" src="sidepanel.js"></script>
+
+</body>
+
+</html>
