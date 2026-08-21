@@ -38,6 +38,7 @@
         <form id="prompt-form">
           <input type="hidden" id="prompt-uuid" />
           <input type="text" id="prompt-title" class="opm-input-field" placeholder="提示词标题" required />
+          <select id="prompt-folder" class="opm-input-field" aria-label="提示词分类"></select>
           <textarea id="prompt-content" class="opm-textarea-field" placeholder="在这里输入提示词，可使用 #变量名# 插入动态内容。" required></textarea>
           <div id="prompt-tags-host" class="prompt-tags-host" hidden></div>
           <div class="form-actions">
@@ -69,6 +70,10 @@
         <div id="prompt-list-controls" class="prompt-list-controls" hidden>
           <div id="prompt-tags-filter" class="prompt-tags-filter" hidden></div>
           <input type="search" id="prompt-search-input" class="prompt-search-input" placeholder="搜索提示词" autocomplete="off" />
+        </div>
+        <div class="folder-toolbar" aria-label="提示词分类">
+          <div id="folder-filter" class="folder-filter" role="tablist" aria-label="提示词分类"></div>
+          <button type="button" id="add-folder-btn" class="folder-add-btn" title="新建分类">+ 分类</button>
         </div>
         <ul id="prompt-list">
 

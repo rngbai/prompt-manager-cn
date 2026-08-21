@@ -135,3 +135,10 @@ export const DEFAULT_PROMPTS = [
   }
 ];
 
+export const DEFAULT_FOLDERS = [
+  { id: 'wechat-folder-question', name: '问清问题', createdAt: '2026-08-21T00:00:00.000Z' },
+  { id: 'wechat-folder-learning', name: '学习', createdAt: '2026-08-21T00:00:00.000Z' },
+  { id: 'wechat-folder-solving', name: '解决问题', createdAt: '2026-08-21T00:00:00.000Z' },
+  { id: 'wechat-folder-decision', name: '决策', createdAt: '2026-08-21T00:00:00.000Z' },
+  { id: 'wechat-folder-self', name: '认识自己', createdAt: '2026-08-21T00:00:00.000Z' },
+];

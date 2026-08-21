@@ -2,7 +2,7 @@
 
 // COMMENT: Use unified prompt storage for all prompt operations
 import * as PromptStorage from '../storage/promptStorage.js';
-import { DEFAULT_PROMPTS } from '../data/articlePrompts.js';
+import { DEFAULT_FOLDERS, DEFAULT_PROMPTS } from '../data/articlePrompts.js';
 import { getPinnedForHostname, getAllPinnedInputs } from '../storage/pinnedInputStorage.js';
 import { getLearnedForHostname } from '../storage/learnedInputStorage.js';
 import {
@@ -47,6 +47,7 @@ function collectPromptFormRefs() {
     composer: document.getElementById('sidebar-composer'),
     form: document.getElementById('prompt-form'),
     titleInput: document.getElementById('prompt-title'),
+    folderSelect: document.getElementById('prompt-folder'),
     contentInput: document.getElementById('prompt-content'),
     uuidInput: document.getElementById('prompt-uuid'),
     submitButton: document.getElementById('submit-button'),
@@ -226,6 +227,7 @@ function resetPromptForm({ keepOpen = false } = {}) {
   if (titleInput) titleInput.value = '';
   if (contentInput) contentInput.value = '';
   if (uuidInput) uuidInput.value = '';
+  renderFolderSelect(activeFolderId !== 'all' && activeFolderId !== 'uncategorized' ? activeFolderId : null);
   if (formTagInput) formTagInput.setTags([]);
   if (submitButton) submitButton.textContent = '保存提示词';
   if (cancelButton) cancelButton.textContent = '返回';
@@ -233,9 +235,10 @@ function resetPromptForm({ keepOpen = false } = {}) {
   if (!keepOpen) setComposerOpen(false);
 }
 
-function openComposerView({ title = '', content = '', uuid = '', tags = [] } = {}) {
+function openComposerView({ title = '', content = '', uuid = '', tags = [], folderId = null } = {}) {
   const {
     titleInput,
+    folderSelect,
     contentInput,
     uuidInput,
     submitButton,
@@ -243,6 +246,10 @@ function openComposerView({ title = '', content = '', uuid = '', tags = [] } = {
   } = getPromptFormEls();
 
   if (titleInput) titleInput.value = title;
+  renderFolderSelect(folderId);
+  if (folderSelect && !uuid && !folderId && activeFolderId !== 'all' && activeFolderId !== 'uncategorized') {
+    folderSelect.value = activeFolderId;
+  }
   if (contentInput) contentInput.value = content;
   if (uuidInput) uuidInput.value = uuid;
   if (formTagInput) formTagInput.setTags(tags);
@@ -655,6 +662,29 @@ async function loadInitSnapshot() {
   try {
     // Seed the personal library whenever the sidepanel opens; reloading the extension does not fire onInstalled.
     await PromptStorage.mergePrompts(DEFAULT_PROMPTS);
+    const existingFolders = await PromptStorage.getFolders();
+    const existingIds = new Set(existingFolders.map(folder => folder.id));
+    const folders = [
+      ...existingFolders,
+      ...DEFAULT_FOLDERS.filter(folder => !existingIds.has(folder.id)),
+    ];
+    if (folders.length !== existingFolders.length) {
+      await PromptStorage.setFolders(folders);
+    }
+
+    // Put the bundled article prompts into their matching folders without moving user-edited prompts.
+    const folderByName = new Map(DEFAULT_FOLDERS.map(folder => [folder.name, folder.id]));
+    const defaultIds = new Map(DEFAULT_PROMPTS.map(prompt => [prompt.uuid, prompt]));
+    const storedPrompts = await PromptStorage.getPrompts();
+    const promptsWithFolders = storedPrompts.map(prompt => {
+      if (prompt.folderId || !defaultIds.has(prompt.uuid)) return prompt;
+      const category = defaultIds.get(prompt.uuid).tags?.find(tag => folderByName.has(tag));
+      const folderId = folderByName.get(category);
+      return folderId ? { ...prompt, folderId } : prompt;
+    });
+    if (promptsWithFolders.some((prompt, index) => prompt.folderId !== storedPrompts[index].folderId)) {
+      await PromptStorage.setPrompts(promptsWithFolders);
+    }
   } catch (_) {
     // Keep the library usable if storage is temporarily unavailable.
   }
@@ -664,8 +694,9 @@ async function loadInitSnapshot() {
     TAG_STORAGE.enableTags,
     TAG_STORAGE.tagsOrder,
   ];
-  const [prompts, storageData, pinnedInputs] = await Promise.all([
+  const [prompts, folders, storageData, pinnedInputs] = await Promise.all([
     PromptStorage.getPrompts(),
+    PromptStorage.getFolders(),
     new Promise(resolve => {
       try {
         chrome.storage.local.get(settingsKeys, resolve);
@@ -678,6 +709,7 @@ async function loadInitSnapshot() {
 
   return {
     prompts,
+    folders,
     providersMap: storageData?.aiProvidersMap || null,
     pinnedInputs,
     activeTagFilter: storageData?.[TAG_STORAGE.activeTagFilter] ?? 'all',
@@ -692,6 +724,9 @@ async function loadInitSnapshot() {
 async function initSidepanelContent() {
   const snapshot = await loadInitSnapshot();
   allPromptsCache = snapshot.prompts;
+  allFoldersCache = snapshot.folders;
+  renderFolderBar();
+  renderFolderSelect();
   activeTagFilter = snapshot.activeTagFilter || 'all';
   cachedEnableTags = snapshot.enableTags;
   cachedTagsOrder = snapshot.tagsOrder;
@@ -730,7 +765,9 @@ async function initSidepanelContent() {
 let llmsAvailableCollapsed = true;
 
 let allPromptsCache = [];
+let allFoldersCache = [];
 let activeTagFilter = 'all';
+let activeFolderId = 'all';
 let searchTerm = '';
 let formTagInput = null;
 // COMMENT: Cached tag settings from the init snapshot to avoid repeat storage reads
@@ -746,6 +783,7 @@ function promptListDisplaySignature(prompts = []) {
     p.uuid,
     p.title,
     p.content,
+    p.folderId || '',
     (Array.isArray(p.tags) ? p.tags.join('\u001f') : ''),
   ].join('\u001e')).join('\u001d');
 }
@@ -1002,6 +1040,7 @@ function buildPromptListItemActions(prompt) {
         content: prompt.content,
         uuid: prompt.uuid,
         tags: prompt.tags || [],
+        folderId: prompt.folderId || null,
       });
     },
   ));
@@ -1081,6 +1120,7 @@ async function getTagSuggestions({ term = '', exclude = new Set() } = {}) {
 function promptMatchesFilters(prompt) {
   const value = (searchTerm || '').toLowerCase();
   const activeTag = (activeTagFilter || 'all').toLowerCase();
+  const folderId = activeFolderId || 'all';
   const title = (prompt.title || '').toLowerCase();
   const content = (prompt.content || '').toLowerCase();
   const tagsFlat = Array.isArray(prompt.tags) ? prompt.tags.map(t => String(t).toLowerCase()).join(' ') : '';
@@ -1092,7 +1132,9 @@ function promptMatchesFilters(prompt) {
     const tagList = Array.isArray(prompt.tags) ? prompt.tags.map(t => String(t).toLowerCase()) : [];
     matchesTag = tagList.includes(activeTag);
   }
-  return matchesSearch && matchesTag;
+  const matchesFolder = folderId === 'all'
+    || (folderId === 'uncategorized' ? !prompt.folderId : prompt.folderId === folderId);
+  return matchesSearch && matchesTag && matchesFolder;
 }
 
 /** COMMENT: Tag input row for create/edit — mirrors in-page TagUI.createTagInput */
@@ -1270,6 +1312,109 @@ function createSidepanelTagInput({ initialTags = [] } = {}) {
       if (suggestions.parentElement) suggestions.parentElement.removeChild(suggestions);
     },
   };
+}
+
+function renderFolderSelect(selectedFolderId = null) {
+  const select = document.getElementById('prompt-folder');
+  if (!select) return;
+  const current = selectedFolderId ?? select.value ?? (activeFolderId !== 'all' ? activeFolderId : '');
+  select.innerHTML = '';
+  select.appendChild(new Option('未分类', ''));
+  allFoldersCache.forEach((folder) => {
+    select.appendChild(new Option(folder.name, folder.id));
+  });
+  select.value = allFoldersCache.some(folder => folder.id === current) ? current : '';
+}
+
+function folderPromptCount(folderId) {
+  if (folderId === 'all') return allPromptsCache.length;
+  if (folderId === 'uncategorized') return allPromptsCache.filter(prompt => !prompt.folderId).length;
+  return allPromptsCache.filter(prompt => prompt.folderId === folderId).length;
+}
+
+async function refreshFolderData() {
+  allFoldersCache = await PromptStorage.getFolders();
+  renderFolderSelect();
+  renderFolderBar();
+}
+
+function renderFolderBar() {
+  const host = document.getElementById('folder-filter');
+  if (!host) return;
+  host.innerHTML = '';
+
+  const addFolderChip = (id, name, count, { removable = false } = {}) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'folder-chip-wrap';
+
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `folder-chip${activeFolderId === id ? ' is-active' : ''}`;
+    chip.setAttribute('role', 'tab');
+    chip.setAttribute('aria-selected', String(activeFolderId === id));
+    chip.textContent = `${name} ${count}`;
+    chip.addEventListener('click', () => {
+      activeFolderId = id;
+      renderFolderBar();
+      refreshFilteredPromptList();
+    });
+    wrap.appendChild(chip);
+
+    if (removable) {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'folder-chip-action';
+      edit.title = `重命名分类：${name}`;
+      edit.textContent = '⋯';
+      edit.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const nextName = window.prompt('请输入新的分类名称', name)?.trim();
+        if (!nextName || nextName === name) return;
+        await PromptStorage.updateFolder(id, { name: nextName });
+        await refreshFolderData();
+      });
+      wrap.appendChild(edit);
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'folder-chip-action folder-chip-remove';
+      remove.title = `删除分类：${name}`;
+      remove.textContent = '×';
+      remove.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        if (!window.confirm(`删除“${name}”分类？其中的提示词会保留并变为未分类。`)) return;
+        await PromptStorage.deleteFolder(id);
+        if (activeFolderId === id) activeFolderId = 'all';
+        await refreshFolderData();
+        await refreshPromptListView(true);
+      });
+      wrap.appendChild(remove);
+    }
+    host.appendChild(wrap);
+  };
+
+  addFolderChip('all', '全部', folderPromptCount('all'));
+  addFolderChip('uncategorized', '未分类', folderPromptCount('uncategorized'));
+  allFoldersCache.forEach(folder => addFolderChip(
+    folder.id,
+    folder.name,
+    folderPromptCount(folder.id),
+    { removable: true },
+  ));
+}
+
+async function createFolderFromToolbar() {
+  const name = window.prompt('请输入分类名称')?.trim();
+  if (!name) return;
+  const duplicate = allFoldersCache.some(folder => folder.name.toLowerCase() === name.toLowerCase());
+  if (duplicate) {
+    showSidepanelToast('这个分类已经存在。', { error: true });
+    return;
+  }
+  const folder = await PromptStorage.saveFolder({ name });
+  activeFolderId = folder.id;
+  await refreshFolderData();
+  refreshFilteredPromptList();
 }
 
 async function renderTagsFilterBar(prompts, enableTagsOverride) {
@@ -1708,9 +1853,14 @@ function displayPrompts(prompts, totalCount = prompts.length) {
   }
   if (emptyState) emptyState.style.display = 'none';
   const fragment = document.createDocumentFragment();
-  prompts.forEach((prompt) => {
+  prompts.forEach((prompt, index) => {
     const li = document.createElement('li');
     li.dataset.uuid = prompt.uuid;
+    const numberSpan = document.createElement('span');
+    numberSpan.className = 'prompt-list-number';
+    numberSpan.textContent = `${index + 1}.`;
+    numberSpan.setAttribute('aria-hidden', 'true');
+    li.appendChild(numberSpan);
     const titleSpan = document.createElement('span');
     titleSpan.textContent = prompt.title;
     titleSpan.style.margin = '2px';
@@ -1739,6 +1889,9 @@ function displayPrompts(prompts, totalCount = prompts.length) {
 // COMMENT: Load prompts from storage, apply search/tag filters, and render
 async function refreshPromptListView(force = false) {
   const nextPrompts = await PromptStorage.getPrompts();
+  allFoldersCache = await PromptStorage.getFolders();
+  renderFolderBar();
+  renderFolderSelect();
   const nextSig = promptListDisplaySignature(nextPrompts);
   if (!force && nextSig === lastPromptListDisplaySig) {
     allPromptsCache = nextPrompts;
@@ -1763,6 +1916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const {
     form,
     titleInput,
+    folderSelect,
     contentInput,
     uuidInput,
     cancelButton,
@@ -1772,6 +1926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   mountSidepanelFooter({ root: sidebarPanel || document.body });
 
   const searchInput = document.getElementById('prompt-search-input');
+  const addFolderBtn = document.getElementById('add-folder-btn');
   const closeExpandedBtn = document.getElementById('close-expanded-view');
   const createPromptBtn = document.getElementById('create-prompt-btn');
   const communityPromptsBtn = document.getElementById('community-prompts-btn');
@@ -1789,6 +1944,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (createPromptBtn) {
     createPromptBtn.addEventListener('click', () => {
       openComposerView();
+    });
+  }
+  if (addFolderBtn) {
+    addFolderBtn.addEventListener('click', () => {
+      createFolderFromToolbar().catch(console.error);
     });
   }
 
@@ -1922,13 +2082,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const title = titleInput.value.trim();
     const content = contentInput.value;
     const tags = formTagInput ? formTagInput.getTags() : [];
+    const folderId = folderSelect?.value || null;
 
     if (uuidInput.value === '') {
       // COMMENT: Add new prompt via unified manager
-      PromptStorage.savePrompt({ title, content, tags }).catch(console.error);
+      PromptStorage.savePrompt({ title, content, tags, folderId }).catch(console.error);
     } else {
       // COMMENT: Update existing prompt by uuid via unified manager
-      PromptStorage.updatePrompt(uuidInput.value, { title, content, tags }).catch(console.error);
+      PromptStorage.updatePrompt(uuidInput.value, { title, content, tags, folderId }).catch(console.error);
     }
 
     // Reset form and return to the prompt list
