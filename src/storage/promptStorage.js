@@ -211,9 +211,10 @@ export async function setFolders(folders) {
 }
 
 export async function saveFolder({ name, parentId = null, id }) {
-  if (!name || typeof name !== 'string') throw new Error('Folder name is required');
+  const cleanName = typeof name === 'string' ? name.trim() : '';
+  if (!cleanName) throw new Error('Folder name is required');
   const folders = await getFolders();
-  const folder = normaliseFolder({ id, name: name.trim(), parentId });
+  const folder = normaliseFolder({ id, name: cleanName, parentId });
   folders.push(folder);
   await setFolders(folders);
   return folder;
@@ -223,7 +224,9 @@ export async function updateFolder(id, partial) {
   const folders = await getFolders();
   const idx = folders.findIndex(f => f.id === id);
   if (idx === -1) throw new Error('Folder not found');
-  folders[idx] = normaliseFolder({ ...folders[idx], ...partial, updatedAt: new Date().toISOString() });
+  const nextName = typeof partial?.name === 'string' ? partial.name.trim() : folders[idx].name;
+  if (!nextName) throw new Error('Folder name is required');
+  folders[idx] = normaliseFolder({ ...folders[idx], ...partial, name: nextName, updatedAt: new Date().toISOString() });
   await setFolders(folders);
   return folders[idx];
 }
