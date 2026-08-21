@@ -30,6 +30,8 @@
 
 打开扩展侧栏后，可以直接看到提示词列表。点击“新建提示词”添加自己的模板；点击提示词整行或复制按钮即可复制内容。包含 `#变量名#` 的提示词会先让你填写变量，再复制最终内容。
 
+完整的安装和操作说明请查看[使用教程](docs/usage-guide.zh-CN.md)。
+
 文章《都Agent时代了，我还是想分享给你这12个我最常用的Prompt》的 Markdown 整理版位于 [`docs/article-12-common-prompts.md`](docs/article-12-common-prompts.md)，对应的 12 条内置提示词位于 [`src/data/articlePrompts.js`](src/data/articlePrompts.js)。
 
 ## 本地开发与测试

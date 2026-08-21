@@ -27,6 +27,8 @@
 - 每个分类中的提示词会自动显示连续序号，例如 `1.`、`2.`、`3.`。
 - 在设置页中管理标签、导入导出和网站权限。
 
+完整使用说明请查看[中文使用教程](docs/usage-guide.zh-CN.md)。
+
 文章 Markdown 整理版位于 `docs/article-12-common-prompts.md`，提示词数据位于 `src/data/articlePrompts.js`。
 
 ## 说明
